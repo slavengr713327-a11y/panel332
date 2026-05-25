@@ -24,9 +24,48 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- 最新漏洞分栏显示 -->
+        <section class="mb-10">
+            <h2 class="text-xl font-bold mb-4 flex items-center text-gray-800">
+                <span class="flex h-3 w-3 mr-3">
+                    <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+                最新收录漏洞
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {% for vuln in latest_vulnerabilities %}
+                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500 hover:shadow-md transition-shadow cursor-pointer"
+                     onclick="window.location.href='{{ url_for('detail', vuln_id=vuln.id) }}'">
+                    <p class="text-xs text-gray-400 mb-1">{{ vuln.last_updated }}</p>
+                    <h4 class="font-bold text-sm line-clamp-2 mb-2">{{ vuln.title }}</h4>
+                    <span class="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">{{ vuln.cve }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
         <div class="flex flex-col lg:flex-row gap-8">
             <!-- 侧边栏过滤器 -->
             <aside class="w-full lg:w-64 space-y-6">
+                <!-- 搜索与分页设置 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold mb-4 text-gray-700">显示设置</h3>
+                    <form action="{{ url_for('index') }}" method="GET" id="per-page-form" class="space-y-4">
+                        <input type="hidden" name="year" value="{{ request.args.get('year', '') }}">
+                        <input type="hidden" name="type" value="{{ request.args.get('type', '') }}">
+                        <input type="hidden" name="q" value="{{ request.args.get('q', '') }}">
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">每页显示</label>
+                            <select name="per_page" onchange="this.form.submit()" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50">
+                                <option value="30" {% if current_per_page == 30 %}selected{% endif %}>30 条</option>
+                                <option value="50" {% if current_per_page == 50 %}selected{% endif %}>50 条</option>
+                                <option value="100" {% if current_per_page == 100 %}selected{% endif %}>100 条</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <h3 class="font-bold mb-4 text-gray-700">年份筛选</h3>
                     <div class="flex flex-wrap gap-2">
@@ -73,7 +112,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {% for vuln in vulnerabilities %}
+                    {% for vuln in pagination.items %}
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer" 
                          onclick="window.location.href='{{ url_for('detail', vuln_id=vuln.id) }}'">
                         <div class="p-6">
@@ -100,6 +139,23 @@
                     </div>
                     {% endfor %}
                 </div>
+
+                <!-- 分页控件 -->
+                {% if pagination.pages > 1 %}
+                <div class="mt-12 flex justify-center items-center gap-4">
+                    {% if pagination.has_prev %}
+                    <a href="{{ url_for('index', page=pagination.prev_num, per_page=current_per_page, year=request.args.get('year', ''), type=request.args.get('type', ''), q=request.args.get('q', '')) }}" 
+                       class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600">上一页</a>
+                    {% endif %}
+                    
+                    <span class="text-sm text-gray-500">第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+                    
+                    {% if pagination.has_next %}
+                    <a href="{{ url_for('index', page=pagination.next_num, per_page=current_per_page, year=request.args.get('year', ''), type=request.args.get('type', ''), q=request.args.get('q', '')) }}" 
+                       class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600">下一页</a>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </main>

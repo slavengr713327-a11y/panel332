@@ -81,6 +81,12 @@ def index():
     type_filter = request.args.get('type')
     severity_filter = request.args.get('severity')
     search_query = request.args.get('q')
+    
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 30, type=int)
+    if per_page not in [30, 50, 100]:
+        per_page = 30
 
     query = Vulnerability.query
 
@@ -97,18 +103,24 @@ def index():
             (Vulnerability.description.ilike(f'%{search_query}%'))
         )
 
+    # Latest vulnerabilities (Top 5 newly updated/inserted)
+    latest_vulns = Vulnerability.query.order_by(Vulnerability.last_updated.desc()).limit(5).all()
+
     # Stats for sidebar/filters
     years = db.session.query(Vulnerability.year).distinct().order_by(Vulnerability.year.desc()).all()
     types = db.session.query(Vulnerability.vuln_type).distinct().all()
+    
+    # Paginated results
+    pagination = query.order_by(Vulnerability.publish_date.desc()).paginate(page=page, per_page=per_page)
     total_count = query.count()
     
-    vulns = query.order_by(Vulnerability.publish_date.desc()).all()
-    
     return render_template('index.html', 
-                         vulnerabilities=vulns, 
+                         pagination=pagination,
+                         latest_vulnerabilities=latest_vulns,
                          years=[y[0] for y in years], 
                          types=[t[0] for t in types],
-                         total_count=total_count)
+                         total_count=total_count,
+                         current_per_page=per_page)
 
 @app.route('/vuln/<path:vuln_id>')
 @login_required

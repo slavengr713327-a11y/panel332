@@ -68,11 +68,19 @@ def upsert_vulnerability(vuln):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Extract year from publish_date
-    try:
-        year = int(vuln['publish_date'].split('-')[0])
-    except:
-        year = datetime.now().year
+    # 从 CVE 编号中提取年份，例如 CVE-2026-XXXX 提取 2026
+    year = None
+    if vuln['cve'] and vuln['cve'] != 'N/A':
+        match = re.search(r'CVE-(\d{4})-', vuln['cve'])
+        if match:
+            year = int(match.group(1))
+    
+    # 如果 CVE 中没有年份，则尝试从发布日期提取
+    if not year:
+        try:
+            year = int(vuln['publish_date'].split('-')[0])
+        except:
+            year = datetime.now().year
 
     # Simple type classification based on title/description
     vuln_type = "Other"

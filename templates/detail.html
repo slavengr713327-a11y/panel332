@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ vuln.title }} - 漏洞知识库</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold"><a href="{{ url_for('index') }}">漏洞知识库</a></h1>
+            <div class="flex items-center gap-4">
+                <span class="text-sm">欢迎, {{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="text-sm bg-blue-700 px-3 py-1 rounded hover:bg-blue-800">退出</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center text-blue-600 hover:underline mb-8">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            返回列表
+        </a>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-8 md:p-12">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
+                    <div>
+                        <span class="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold mb-2">{{ vuln.cve }}</span>
+                        <h2 class="text-3xl font-extrabold text-gray-900">{{ vuln.title }}</h2>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-center">
+                            <p class="text-xs text-gray-400 uppercase font-bold mb-1">风险等级</p>
+                            <span class="px-4 py-1 rounded-full font-bold 
+                                {% if 'high' in vuln.severity.lower() or 'critical' in vuln.severity.lower() %}bg-red-100 text-red-700
+                                {% elif 'medium' in vuln.severity.lower() %}bg-yellow-100 text-yellow-700
+                                {% else %}bg-green-100 text-green-700{% endif %}">
+                                {{ vuln.severity }}
+                            </span>
+                        </div>
+                        {% if vuln.cvss != 'N/A' %}
+                        <div class="text-center">
+                            <p class="text-xs text-gray-400 uppercase font-bold mb-1">CVSS 评分</p>
+                            <span class="text-2xl font-black text-gray-800">{{ vuln.cvss }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12 border-y border-gray-100 py-8">
+                    <div>
+                        <p class="text-sm text-gray-400 mb-1">发布日期</p>
+                        <p class="font-medium">{{ vuln.publish_date }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-400 mb-1">年份</p>
+                        <p class="font-medium">{{ vuln.year }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-400 mb-1">类型</p>
+                        <p class="font-medium">{{ vuln.vuln_type }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-400 mb-1">CVE 编号</p>
+                        <p class="font-medium">{{ vuln.cve }}</p>
+                    </div>
+                </div>
+
+                <section class="mb-12">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="w-1 h-6 bg-blue-600 mr-3 rounded-full"></span>
+                        漏洞描述
+                    </h3>
+                    <div class="text-gray-700 leading-relaxed whitespace-pre-wrap">{{ vuln.description }}</div>
+                </section>
+
+                {% if vuln.solution %}
+                <section class="mb-12">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="w-1 h-6 bg-green-500 mr-3 rounded-full"></span>
+                        修复建议
+                    </h3>
+                    <div class="bg-green-50 p-6 rounded-xl text-green-800 leading-relaxed whitespace-pre-wrap">{{ vuln.solution }}</div>
+                </section>
+                {% endif %}
+
+                {% if references %}
+                <section>
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="w-1 h-6 bg-purple-500 mr-3 rounded-full"></span>
+                        参考链接
+                    </h3>
+                    <ul class="space-y-2">
+                        {% for ref in references %}
+                        <li>
+                            <a href="{{ ref }}" target="_blank" class="text-blue-600 hover:underline break-all flex items-start">
+                                <svg class="w-4 h-4 mr-2 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                {{ ref }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>

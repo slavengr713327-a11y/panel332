@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>漏洞知识库</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .severity-high { color: #ef4444; }
+        .severity-medium { color: #f59e0b; }
+        .severity-low { color: #10b981; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold"><a href="{{ url_for('index') }}">漏洞知识库</a></h1>
+            <div class="flex items-center gap-4">
+                <span class="text-sm">欢迎, {{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="text-sm bg-blue-700 px-3 py-1 rounded hover:bg-blue-800">退出</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- 侧边栏过滤器 -->
+            <aside class="w-full lg:w-64 space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold mb-4 text-gray-700">年份筛选</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ url_for('index', year='', type=request.args.get('type', ''), severity=request.args.get('severity', '')) }}" 
+                           class="px-3 py-1 text-sm rounded-full {% if not request.args.get('year') %}bg-blue-100 text-blue-600 font-bold{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                           全部
+                        </a>
+                        {% for y in years %}
+                        <a href="{{ url_for('index', year=y, type=request.args.get('type', ''), severity=request.args.get('severity', '')) }}" 
+                           class="px-3 py-1 text-sm rounded-full {% if request.args.get('year')|int == y %}bg-blue-100 text-blue-600 font-bold{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                           {{ y }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold mb-4 text-gray-700">漏洞类型</h3>
+                    <div class="space-y-2">
+                        <a href="{{ url_for('index', type='', year=request.args.get('year', ''), severity=request.args.get('severity', '')) }}" 
+                           class="block px-3 py-2 text-sm rounded-lg {% if not request.args.get('type') %}bg-blue-50 text-blue-600 font-bold{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                           全部类型
+                        </a>
+                        {% for t in types %}
+                        <a href="{{ url_for('index', type=t, year=request.args.get('year', ''), severity=request.args.get('severity', '')) }}" 
+                           class="block px-3 py-2 text-sm rounded-lg {% if request.args.get('type') == t %}bg-blue-50 text-blue-600 font-bold{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                           {{ t }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主内容区 -->
+            <div class="flex-1">
+                <div class="mb-8 flex flex-col md:flex-row gap-4">
+                    <form action="{{ url_for('index') }}" method="GET" class="flex-1 flex gap-2">
+                        <input type="hidden" name="year" value="{{ request.args.get('year', '') }}">
+                        <input type="hidden" name="type" value="{{ request.args.get('type', '') }}">
+                        <input type="text" name="q" value="{{ request.args.get('q', '') }}" placeholder="搜索 CVE 或 标题..." 
+                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">搜索</button>
+                    </form>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for vuln in vulnerabilities %}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer" 
+                         onclick="window.location.href='{{ url_for('detail', vuln_id=vuln.id) }}'">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-600">{{ vuln.cve }}</span>
+                                <span class="text-xs font-bold uppercase 
+                                    {% if 'high' in vuln.severity.lower() or 'critical' in vuln.severity.lower() %}severity-high
+                                    {% elif 'medium' in vuln.severity.lower() %}severity-medium
+                                    {% else %}severity-low{% endif %}">
+                                    {{ vuln.severity }}
+                                </span>
+                            </div>
+                            <h3 class="text-lg font-bold mb-2 line-clamp-2">{{ vuln.title }}</h3>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ vuln.description }}</p>
+                            <div class="flex justify-between items-center text-xs text-gray-400">
+                                <span>类型: {{ vuln.vuln_type }} | {{ vuln.publish_date }}</span>
+                                <span class="text-blue-600 font-medium">查看详情 →</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-span-full py-20 text-center text-gray-500 bg-white rounded-xl border border-gray-200">
+                        未找到相关漏洞数据
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

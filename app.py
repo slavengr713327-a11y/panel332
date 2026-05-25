@@ -21,6 +21,17 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
 
+def init_default_user():
+    admin_user = User.query.filter_by(username='admin').first()
+    if not admin_user:
+        default_admin = User(
+            username='admin', 
+            password_hash=generate_password_hash('Vuln@123')
+        )
+        db.session.add(default_admin)
+        db.session.commit()
+        print("Default admin user created (admin / Vuln@123)")
+
 class Vulnerability(db.Model):
     __tablename__ = 'vulnerabilities'
     id = db.Column(db.String(255), primary_key=True)
@@ -101,6 +112,11 @@ def detail(vuln_id):
     references = json.loads(vuln.references_json) if vuln.references_json else []
     return render_template('detail.html', vuln=vuln, references=references)
 
+# Initialization
+with app.app_context():
+    db.create_all()
+    init_default_user()
+
 # Command to create admin user
 @app.cli.command("create-admin")
 def create_admin():
@@ -112,7 +128,5 @@ def create_admin():
     print(f"Admin user {username} created.")
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)

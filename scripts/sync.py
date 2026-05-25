@@ -39,11 +39,20 @@ def init_db():
             solution TEXT,
             references_json TEXT,
             cvss TEXT,
+            sha TEXT,
             last_updated TEXT
         )
     ''')
     conn.commit()
     conn.close()
+
+def get_existing_sha(vuln_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT sha FROM vulnerabilities WHERE id = ?', (vuln_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
 
 def upsert_vulnerability(vuln):
     conn = sqlite3.connect(DB_PATH)
@@ -57,7 +66,7 @@ def upsert_vulnerability(vuln):
 
     # Simple type classification based on title/description
     vuln_type = "Other"
-    content_to_check = (vuln['title'] + " " + vuln['description']).lower()
+    content_to_check = (vuln['title'] + " " + (vuln.get('description') or "")).lower()
     types_map = {
         "Injection": ["injection", "sql", "sqli", "xss", "cross-site"],
         "RCE": ["rce", "execution", "remote code"],
@@ -73,8 +82,8 @@ def upsert_vulnerability(vuln):
     cursor.execute('''
         INSERT INTO vulnerabilities (
             id, title, cve, severity, publish_date, year, vuln_type, 
-            description, solution, references_json, cvss, last_updated
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            description, solution, references_json, cvss, sha, last_updated
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             title=excluded.title,
             cve=excluded.cve,
@@ -86,15 +95,17 @@ def upsert_vulnerability(vuln):
             solution=excluded.solution,
             references_json=excluded.references_json,
             cvss=excluded.cvss,
+            sha=excluded.sha,
             last_updated=excluded.last_updated
     ''', (
         vuln['id'], vuln['title'], vuln['cve'], vuln['severity'], 
         vuln['publish_date'], year, vuln_type, vuln['description'], 
         vuln['solution'], json.dumps(vuln['references']), vuln['cvss'],
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        vuln['sha'], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
     conn.commit()
     conn.close()
+    print(f"Successfully updated/inserted: {vuln['id']}")
 
 def fetch_github_api(url, retries=3):
     for i in range(retries):
@@ -173,10 +184,18 @@ def sync():
     def process_directory(path):
         nonlocal processed_count
         api_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{path}"
+        print(f"Fetching: {api_url}")
         contents = fetch_github_api(api_url)
         
-        if not contents or not isinstance(contents, list):
+        if contents is None:
+            print(f"Warning: Failed to fetch content for {path}")
             return
+        
+        if not isinstance(contents, list):
+            print(f"Notice: {path} is not a directory or is empty.")
+            return
+
+        print(f"Found {len(contents)} items in {path}")
 
         for item in contents:
             if item['type'] == 'file':
@@ -184,13 +203,23 @@ def sync():
                 if filename.lower() == 'readme.md':
                     continue
                 if any(filename.endswith(ext) for ext in ['.json', '.md', '.yaml', '.yml']):
-                    print(f"Processing {item['path']}...")
+                    vuln_id = item['path']
+                    current_sha = item['sha']
+                    
+                    # 增量检查：对比 SHA
+                    existing_sha = get_existing_sha(vuln_id)
+                    if existing_sha == current_sha:
+                        print(f"Skipping {vuln_id} (No changes)")
+                        continue
+
+                    print(f"Processing {vuln_id}...")
                     content = get_file_content(item['download_url'])
                     if content:
                         vuln = parse_vulnerability(content, filename)
                         if vuln:
-                            vuln['id'] = item['path'] # Using path as unique ID
-                            upsert_vulnerability(vuln)
+                            vuln['id'] = vuln_id
+                            vuln['sha'] = current_sha
+                            upsert_vulnerability(vuln) # 搜到一个添加一个
                             processed_count += 1
             elif item['type'] == 'dir':
                 if item['name'] in ['.github', 'scripts']:

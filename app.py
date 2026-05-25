@@ -45,6 +45,7 @@ class Vulnerability(db.Model):
     solution = db.Column(db.Text)
     references_json = db.Column(db.Text)
     cvss = db.Column(db.String(50))
+    sha = db.Column(db.String(100))
     last_updated = db.Column(db.String(50))
 
 @login_manager.user_loader
@@ -97,13 +98,15 @@ def index():
     # Stats for sidebar/filters
     years = db.session.query(Vulnerability.year).distinct().order_by(Vulnerability.year.desc()).all()
     types = db.session.query(Vulnerability.vuln_type).distinct().all()
+    total_count = query.count()
     
     vulns = query.order_by(Vulnerability.publish_date.desc()).all()
     
     return render_template('index.html', 
                          vulnerabilities=vulns, 
                          years=[y[0] for y in years], 
-                         types=[t[0] for t in types])
+                         types=[t[0] for t in types],
+                         total_count=total_count)
 
 @app.route('/vuln/<path:vuln_id>')
 @login_required

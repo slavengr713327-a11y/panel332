@@ -43,6 +43,14 @@ def init_db():
             last_updated TEXT
         )
     ''')
+    
+    # 检查并修复缺失的 sha 列 (针对旧数据库)
+    cursor.execute("PRAGMA table_info(vulnerabilities)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'sha' not in columns:
+        print("Migrating database: adding 'sha' column...")
+        cursor.execute("ALTER TABLE vulnerabilities ADD COLUMN sha TEXT")
+        
     conn.commit()
     conn.close()
 

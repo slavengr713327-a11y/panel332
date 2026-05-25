@@ -15,7 +15,9 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_OWNER = "slavengr713327-a11y"
 REPO_NAME = "Watch"
 DATA_PATH = "data"
-DB_PATH = "vulnerability.db"
+# 使用绝对路径确保与 Flask 一致
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "vulnerability.db")
 
 HEADERS = {
     "Accept": "application/vnd.github.v3+json",

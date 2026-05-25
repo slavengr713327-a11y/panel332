@@ -169,13 +169,9 @@ def sync():
     print(f"Starting sync from {REPO_OWNER}/{REPO_NAME}/{DATA_PATH}...")
     init_db()
     processed_count = 0
-    MAX_FILES = 1000
 
     def process_directory(path):
         nonlocal processed_count
-        if processed_count >= MAX_FILES:
-            return
-
         api_url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{path}"
         contents = fetch_github_api(api_url)
         
@@ -183,9 +179,6 @@ def sync():
             return
 
         for item in contents:
-            if processed_count >= MAX_FILES:
-                break
-                
             if item['type'] == 'file':
                 filename = item['name']
                 if filename.lower() == 'readme.md':
@@ -205,7 +198,24 @@ def sync():
                 process_directory(item['path'])
 
     process_directory(DATA_PATH)
-    print(f"Sync complete. {processed_count} vulnerabilities processed.")
+    
+    # 导出静态 JSON 供 GitHub Pages 使用
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM vulnerabilities ORDER BY publish_date DESC')
+    rows = cursor.fetchall()
+    vulnerabilities = [dict(row) for row in rows]
+    conn.close()
+
+    os.makedirs("web", exist_ok=True)
+    with open("web/vulnerabilities.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "data": vulnerabilities
+        }, f, indent=2, ensure_ascii=False)
+
+    print(f"Sync complete. {processed_count} vulnerabilities processed. Static JSON exported.")
 
 if __name__ == "__main__":
     sync()

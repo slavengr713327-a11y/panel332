@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>漏洞详情 - 漏洞知识库</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <h1 class="text-2xl font-bold"><a href="index.html">漏洞知识库</a></h1>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <a href="index.html" class="inline-flex items-center text-blue-600 hover:underline mb-8">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            返回列表
+        </a>
+
+        <div id="detail-container" class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <!-- 详情内容将在这里动态生成 -->
+            <div class="p-12 text-center text-gray-500">
+                正在加载漏洞详情...
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function fetchDetail() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const vulnId = urlParams.get('id');
+
+            if (!vulnId) {
+                renderError('未指定漏洞 ID');
+                return;
+            }
+
+            try {
+                const response = await fetch('vulnerabilities.json');
+                const result = await response.json();
+                const vuln = result.data.find(v => v.id === vulnId);
+
+                if (!vuln) {
+                    renderError('未找到该漏洞信息');
+                    return;
+                }
+
+                renderDetail(vuln);
+            } catch (error) {
+                console.error('加载详情失败:', error);
+                renderError('数据加载失败');
+            }
+        }
+
+        function renderDetail(vuln) {
+            const container = document.getElementById('detail-container');
+            container.innerHTML = `
+                <div class="p-8 md:p-12">
+                    <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
+                        <div>
+                            <span class="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold mb-2">${vuln.cve}</span>
+                            <h2 class="text-3xl font-extrabold text-gray-900">${vuln.title}</h2>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="text-center">
+                                <p class="text-xs text-gray-400 uppercase font-bold mb-1">风险等级</p>
+                                <span class="px-4 py-1 rounded-full font-bold ${getSeverityBg(vuln.severity)}">${vuln.severity}</span>
+                            </div>
+                            ${vuln.cvss !== 'N/A' ? `
+                            <div class="text-center">
+                                <p class="text-xs text-gray-400 uppercase font-bold mb-1">CVSS 评分</p>
+                                <span class="text-2xl font-black text-gray-800">${vuln.cvss}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 border-y border-gray-100 py-8">
+                        <div>
+                            <p class="text-sm text-gray-400 mb-1">发布日期</p>
+                            <p class="font-medium">${vuln.publish_date}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-400 mb-1">CVE 编号</p>
+                            <p class="font-medium">${vuln.cve}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-400 mb-1">漏洞 ID</p>
+                            <p class="font-medium text-xs break-all">${vuln.id}</p>
+                        </div>
+                    </div>
+
+                    <section class="mb-12">
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-blue-600 mr-3 rounded-full"></span>
+                            漏洞描述
+                        </h3>
+                        <div class="text-gray-700 leading-relaxed whitespace-pre-wrap">${escapeHtml(vuln.description)}</div>
+                    </section>
+
+                    ${vuln.solution ? `
+                    <section class="mb-12">
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-green-500 mr-3 rounded-full"></span>
+                            修复建议
+                        </h3>
+                        <div class="bg-green-50 p-6 rounded-xl text-green-800 leading-relaxed whitespace-pre-wrap">${escapeHtml(vuln.solution)}</div>
+                    </section>
+                    ` : ''}
+
+                    ${vuln.references && vuln.references.length > 0 ? `
+                    <section>
+                        <h3 class="text-xl font-bold mb-4 flex items-center">
+                            <span class="w-1 h-6 bg-purple-500 mr-3 rounded-full"></span>
+                            参考链接
+                        </h3>
+                        <ul class="space-y-2">
+                            ${vuln.references.map(ref => `
+                                <li>
+                                    <a href="${ref}" target="_blank" class="text-blue-600 hover:underline break-all flex items-start">
+                                        <svg class="w-4 h-4 mr-2 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        ${ref}
+                                    </a>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </section>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function getSeverityBg(severity) {
+            const s = severity.toLowerCase();
+            if (s.includes('high') || s.includes('critical')) return 'bg-red-100 text-red-700';
+            if (s.includes('medium') || s.includes('warn')) return 'bg-yellow-100 text-yellow-700';
+            if (s.includes('low') || s.includes('info')) return 'bg-green-100 text-green-700';
+            return 'bg-gray-100 text-gray-700';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function renderError(msg) {
+            document.getElementById('detail-container').innerHTML = `
+                <div class="p-20 text-center">
+                    <p class="text-red-500 text-xl font-bold mb-4">${msg}</p>
+                    <a href="index.html" class="text-blue-600 hover:underline">返回首页</a>
+                </div>
+            `;
+        }
+
+        fetchDetail();
+    </script>
+</body>
+</html>

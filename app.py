@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import markdown
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
@@ -90,7 +91,8 @@ def index():
 
     query = Vulnerability.query
 
-    if year_filter:
+    # 严格年份过滤
+    if year_filter is not None:
         query = query.filter(Vulnerability.year == year_filter)
     if type_filter:
         query = query.filter(Vulnerability.vuln_type == type_filter)
@@ -104,11 +106,23 @@ def index():
         )
 
     # Latest vulnerabilities (Top 5 newly updated/inserted)
-    latest_vulns = Vulnerability.query.order_by(Vulnerability.last_updated.desc()).limit(5).all()
+    # 严格按照 CVE 编号去重，并只取最新的 5 条
+    unique_latest_query = db.session.query(Vulnerability).order_by(Vulnerability.last_updated.desc()).limit(20).all()
+    seen_cves = set()
+    unique_latest = []
+    for v in unique_latest_query:
+        # 如果是 N/A 则不作为去重依据，但为了美观我们优先展示有 CVE 的
+        cve_key = v.cve if v.cve != 'N/A' else v.id
+        if cve_key not in seen_cves:
+            unique_latest.append(v)
+            seen_cves.add(cve_key)
+        if len(unique_latest) >= 5:
+            break
 
-    # Stats for sidebar/filters
-    years = db.session.query(Vulnerability.year).distinct().order_by(Vulnerability.year.desc()).all()
-    types = db.session.query(Vulnerability.vuln_type).distinct().all()
+    # Stats for sidebar/filters - 动态获取现有的年份和类型
+    # 只显示数据库中存在的年份和类型
+    years_query = db.session.query(Vulnerability.year).distinct().order_by(Vulnerability.year.desc()).all()
+    types_query = db.session.query(Vulnerability.vuln_type).distinct().order_by(Vulnerability.vuln_type).all()
     
     # Paginated results
     pagination = query.order_by(Vulnerability.publish_date.desc()).paginate(page=page, per_page=per_page)
@@ -116,9 +130,9 @@ def index():
     
     return render_template('index.html', 
                          pagination=pagination,
-                         latest_vulnerabilities=latest_vulns,
-                         years=[y[0] for y in years], 
-                         types=[t[0] for t in types],
+                         latest_vulnerabilities=unique_latest,
+                         years=[y[0] for y in years_query if y[0] is not None], 
+                         types=[t[0] for t in types_query if t[0]],
                          total_count=total_count,
                          current_per_page=per_page)
 
@@ -127,7 +141,16 @@ def index():
 def detail(vuln_id):
     vuln = Vulnerability.query.get_or_404(vuln_id)
     references = json.loads(vuln.references_json) if vuln.references_json else []
-    return render_template('detail.html', vuln=vuln, references=references)
+    
+    # 将 Markdown 转换为 HTML
+    description_html = markdown.markdown(vuln.description or "", extensions=['extra', 'fenced_code', 'tables'])
+    solution_html = markdown.markdown(vuln.solution or "", extensions=['extra', 'fenced_code', 'tables'])
+    
+    return render_template('detail.html', 
+                         vuln=vuln, 
+                         references=references,
+                         description_html=description_html,
+                         solution_html=solution_html)
 
 # Initialization
 with app.app_context():

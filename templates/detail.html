@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ vuln.title }} - 漏洞知识库</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .prose pre { background-color: #f3f4f6; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0; }
+        .prose code { background-color: #f3f4f6; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-size: 0.875em; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; }
+        .prose th { background-color: #f9fafb; font-weight: 600; }
+        .prose ul, .prose ol { margin: 1rem 0; padding-left: 1.5rem; }
+        .prose li { margin: 0.5rem 0; }
+        .prose p { margin: 1rem 0; }
+        .prose h1, .prose h2, .prose h3 { font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .prose h1 { font-size: 1.5rem; }
+        .prose h2 { font-size: 1.25rem; }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans">
     <nav class="bg-blue-600 text-white shadow-lg">
@@ -56,7 +69,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-400 mb-1">年份</p>
-                        <p class="font-medium">{{ vuln.year }}</p>
+                        <p class="font-medium">{% if vuln.year == 0 %}未识别年份{% else %}{{ vuln.year }}{% endif %}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-400 mb-1">类型</p>
@@ -73,7 +86,9 @@
                         <span class="w-1 h-6 bg-blue-600 mr-3 rounded-full"></span>
                         漏洞描述
                     </h3>
-                    <div class="text-gray-700 leading-relaxed whitespace-pre-wrap">{{ vuln.description }}</div>
+                    <div class="prose prose-blue max-w-none text-gray-700 leading-relaxed">
+                        {{ description_html|safe }}
+                    </div>
                 </section>
 
                 {% if vuln.solution %}
@@ -82,7 +97,9 @@
                         <span class="w-1 h-6 bg-green-500 mr-3 rounded-full"></span>
                         修复建议
                     </h3>
-                    <div class="bg-green-50 p-6 rounded-xl text-green-800 leading-relaxed whitespace-pre-wrap">{{ vuln.solution }}</div>
+                    <div class="prose prose-green max-w-none bg-green-50 p-6 rounded-xl text-green-800 leading-relaxed">
+                        {{ solution_html|safe }}
+                    </div>
                 </section>
                 {% endif %}
 

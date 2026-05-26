@@ -6,3 +6,4 @@ flask-sqlalchemy
 flask-login
 werkzeug
 gunicorn
+markdown
